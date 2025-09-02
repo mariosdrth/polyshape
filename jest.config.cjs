@@ -9,4 +9,16 @@ module.exports = {
   moduleNameMapper: {
     '^../../lib/projects$': '<rootDir>/tests/__mocks__/projects.ts',
   },
+  reporters: [
+    'default',
+    ['jest-html-reporter', {
+      pageTitle: 'Polyshape Unit Test Report',
+      outputPath: 'unit-test-report.html',
+      logo: 'public/logo.png',
+      theme: 'darkTheme',
+      dateFormat: 'yyyy-mm-dd HH:MM:ss',
+      includeFailureMsg: true,
+      includeConsoleLog: true
+    }]
+  ],
 };
