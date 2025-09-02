@@ -14,7 +14,6 @@ module.exports = {
     ['jest-html-reporter', {
       pageTitle: 'Polyshape Unit Test Report',
       outputPath: 'unit-test-report.html',
-      logo: 'public/logo.png',
       theme: 'darkTheme',
       dateFormat: 'yyyy-mm-dd HH:MM:ss',
       includeFailureMsg: true,
