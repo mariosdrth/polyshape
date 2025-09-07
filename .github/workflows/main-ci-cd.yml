@@ -58,7 +58,7 @@ jobs:
               "target": "production",
               "build": {
                 "env": {
-                  "CI_DEPLOY": "false"
+                  "CI_DEPLOY": "true"
                 }
               }
             }'
