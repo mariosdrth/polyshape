@@ -1,14 +1,67 @@
-// Contact.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppRoutes } from '../lib/common/AppRoutes';
+import { isDev, getEnvVar } from "../lib/env";
+import { useLoading } from '../lib/common/ui/spinner/useLoading';
 
 type Status = 'idle' | 'sending' | 'success' | 'error';
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function isMacOS(): boolean {
+  const nav = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
+
+  return nav.userAgentData?.platform
+    ? nav.userAgentData.platform.toLowerCase() === "macos"
+    : /mac/i.test(navigator.userAgent);
+}
+
 export default function Contact() {
+  const {setLoadingState} = useLoading();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [invalid, setInvalid] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    if (!(isDev() && getEnvVar("VITE_USE_MSW") === "true")) {
+      return; // only in dev with flag
+    }
+
+    function handleShortcut(e: KeyboardEvent) {
+      const isMac = isMacOS();
+      // Ctrl+Alt+F (or Cmd+Opt+F on Mac)
+      const fail = isMac
+        ? e.metaKey && e.altKey && e.key === "f"
+        : e.ctrlKey && e.altKey && e.key === "f";
+
+      // Ctrl+Alt+E (or Cmd+Opt+E on Mac)
+      const happy = isMac
+        ? e.metaKey && e.altKey && e.key === "s"
+        : e.ctrlKey && e.altKey && e.key === "s";
+
+      if (happy || fail) {
+        const nameInput = document.querySelector<HTMLInputElement>("#name");
+        const emailInput = document.querySelector<HTMLInputElement>("#email");
+        const messageInput = document.querySelector<HTMLTextAreaElement>("#message");
+
+        if (nameInput && emailInput && messageInput) {
+          nameInput.value = "Test User";
+          emailInput.value = "test@example.com";
+          messageInput.value = fail
+          ? "Hello from shortcut! Fail"
+          : "Hello from shortcut!";
+
+          // fire input events so React picks up the change
+          nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+          emailInput.dispatchEvent(new Event("input", { bubbles: true }));
+          messageInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   function validate(payload: { name: string; email: string; message: string }) {
     if (!payload.name.trim() || !payload.email.trim() || !payload.message.trim()) {
@@ -52,18 +105,18 @@ export default function Contact() {
     const form = e.currentTarget;
     const fd = new FormData(form);
     const payload = {
-      name: String(fd.get('name') ?? ''),
-      email: String(fd.get('email') ?? ''),
-      message: String(fd.get('message') ?? ''),
-      company: String(fd.get('company') ?? ''),
+      name: String(fd.get("name") ?? ""),
+      email: String(fd.get("email") ?? ""),
+      message: String(fd.get("message") ?? ""),
+      company: String(fd.get("company") ?? ""),
     };
 
     const newInvalid: typeof invalid = {};
-    ['name', 'email', 'message'].forEach(f => {
+    ["name", "email", "message"].forEach((f) => {
       const value = payload[f as keyof typeof payload].trim();
       if (!value) {
         newInvalid[f] = true;
-      } else if (f === 'email' && !RE_EMAIL.test(value)) {
+      } else if (f === "email" && !RE_EMAIL.test(value)) {
         newInvalid[f] = true;
       }
     });
@@ -71,57 +124,54 @@ export default function Contact() {
 
     const clientErr = validate(payload);
     if (clientErr) {
-      setStatus('error');
+      setStatus("error");
       setError(clientErr);
       return;
     }
 
     if (payload.company) {
-      setStatus('success');
+      setStatus("success");
       form.reset();
       setInvalid({});
       return;
     }
 
     try {
-      setStatus('sending');
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // 👇 both states: local & global
+      setStatus("sending"); // button text
+      setLoadingState("loading");  // overlay
+
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       type ContactResponse = { ok?: boolean; error?: string; dryRun?: boolean };
       const data = (await res.json().catch(() => ({}))) as ContactResponse;
+
       if (!res.ok || data.ok === false) {
-        throw new Error(data.error || 'Failed to send');
+        throw new Error(data.error || "Failed to send");
       }
-      setStatus('success');
+
+      setStatus("success");
       form.reset();
       setInvalid({});
     } catch (err: unknown) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to send');
+      setStatus("error");
+      setError(err instanceof Error ? err.message : "Failed to send");
+    } finally {
+      // 👇 always hide overlay
+      setLoadingState(null);
     }
   }
 
   return (
     <div className="prose prose--big">
       <h1 className="hero__title">{AppRoutes.CONTACT.title}</h1>
-      <div className="contact-form__wrapper">
-        <div className="contact-form--message--wrapper">
-          <h1>Get in touch</h1>
-          <p className="contact-form--message">PolyShape LTD</p>
-          <p className="contact-form--message">The Accountancy Partnership</p>
-          <p className="contact-form--message">Twelve Quays House</p>
-          <p className="contact-form--message">Egerton Wharf</p>
-          <p className="contact-form--message">Wirral</p>
-          <p className="contact-form--message">United Kingdom</p>
-          <p className="contact-form--message">CH41 1LD</p>
-        </div>
-
-        <form onSubmit={onSubmit} className="contact-form" noValidate>
-          <div className="contact-form__field">
-            <label htmlFor="name">Name <span className="required">*</span></label>
+      <form onSubmit={onSubmit} className="contact-form" noValidate>
+        <div className="contact-form__field">
+          <div className="floating-label-group">
             <input
               className={`contact-form__control ${invalid.name ? 'contact-form__control--error' : ''}`}
               id="name"
@@ -130,10 +180,13 @@ export default function Contact() {
               autoComplete="name"
               required
               onChange={handleChange}
+              onBlur={e => e.target.value ? e.target.classList.add('has-value') : e.target.classList.remove('has-value')}
             />
+            <label htmlFor="name">Name <span className="required">(required)</span></label>
           </div>
-          <div className="contact-form__field">
-            <label htmlFor="email">Email <span className="required">*</span></label>
+        </div>
+        <div className="contact-form__field">
+          <div className="floating-label-group">
             <input
               className={`contact-form__control ${invalid.email ? 'contact-form__control--error' : ''}`}
               id="email"
@@ -142,14 +195,19 @@ export default function Contact() {
               autoComplete="email"
               required
               onChange={handleChange}
+              onBlur={e => e.target.value ? e.target.classList.add('has-value') : e.target.classList.remove('has-value')}
             />
+            <label htmlFor="email">Email <span className="required">(required)</span></label>
           </div>
-          <div className="contact-form__field" style={{ display: 'none' }}>
-            <label htmlFor="company">Company</label>
+        </div>
+        <div className="contact-form__field" style={{ display: 'none' }}>
+          <div className="floating-label-group">
             <input className="contact-form__control" id="company" name="company" type="text" tabIndex={-1} autoComplete="off" />
+            <label htmlFor="company">Company</label>
           </div>
-          <div className="contact-form__field">
-            <label htmlFor="message">Message <span className="required">*</span></label>
+        </div>
+        <div className="contact-form__field">
+          <div className="floating-label-group">
             <textarea
               className={`contact-form__control ${invalid.message ? 'contact-form__control--error' : ''}`}
               id="message"
@@ -157,17 +215,19 @@ export default function Contact() {
               rows={6}
               required
               onChange={handleChange}
+              onBlur={e => e.target.value ? e.target.classList.add('has-value') : e.target.classList.remove('has-value')}
             />
+            <label htmlFor="message">Message <span className="required">(required)</span></label>
           </div>
-          <div className="contact-form__actions">
-            <button type="submit" disabled={status === 'sending'}>
-              {status === 'sending' ? 'Sending…' : 'Send message'}
-            </button>
-            {status === 'success' && <span className="hint success">Thanks! We'll get back to you.</span>}
-            {status === 'error' && error && <span className="hint error">{error}</span>}
-          </div>
-        </form>
-      </div>
+        </div>
+        <div className="contact-form__actions">
+          <button className="button__primary" type="submit" disabled={status === 'sending'}>
+            {status === 'sending' ? 'Sending…' : 'Send'}
+          </button>
+          {status === 'success' && <span className="hint success">Thanks! We'll get back to you.</span>}
+          {status === 'error' && error && <span className="hint error">{error}</span>}
+        </div>
+      </form>
     </div>
   );
 }
