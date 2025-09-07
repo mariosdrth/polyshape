@@ -44,13 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Vercel deployment
+        id: vercel_deploy
         run: |
           response=$(curl -s -X POST "https://api.vercel.com/v13/deployments" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"name":"polyshape","gitSource":{"type":"github","repoId":"1046415126","ref":"main"},"target":"production","build":{"env":{"CI_DEPLOY":"true"}}}')
 
-          echo "response=$response" >> $GITHUB_OUTPUT
           echo "id=$(echo $response | jq -r .id)" >> $GITHUB_OUTPUT
       - name: Wait for deployment to complete
         run: |
@@ -66,7 +66,7 @@ jobs:
             if [ "$status" = "READY" ]; then
               echo "Deployment successful"
               exit 0
-            elif [ "$status" = "ERROR" ]; then
+            elif [ "$status" = "ERROR" ] || [ "$status" = "CANCELED" ]; then
               echo "Deployment failed"
               exit 1
             fi
