@@ -42,8 +42,23 @@ jobs:
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
-    env:
-      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
     steps:
-      - name: Trigger Vercel Deployment
-        run: curl -X POST "$VERCEL_DEPLOY_HOOK"
+      - name: Deploy to Vercel (Production)
+        run: |
+          curl -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "polyshape",
+              "gitSource": {
+                "type": "github",
+                "repoId": "1046415126",
+                "ref": "main"
+              },
+              "target": "production",
+              "build": {
+                "env": {
+                  "CI_DEPLOY": "false"
+                }
+              }
+            }'
