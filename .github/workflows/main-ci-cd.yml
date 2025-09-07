@@ -44,8 +44,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Vercel (Production)
-        run: >
-          curl -X POST "https://api.vercel.com/v13/deployments"
-          -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}"
-          -H "Content-Type: application/json"
-          -d '{"name":"polyshape","gitSource":{"type":"github","repoId":"1046415126","ref":"main"},"target":"production","build":{"env":{"CI_DEPLOY":"true"}}}'
+        run: |
+          curl -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "polyshape",
+              "gitSource": {
+                "type": "github",
+                "repoId": "1046415126",
+                "ref": "main"
+              },
+              "target": "production",
+              "build": {
+                "env": {
+                  "CI_DEPLOY": "true"
+                }
+              }
+            }'
