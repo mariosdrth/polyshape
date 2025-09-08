@@ -10,13 +10,10 @@ export default defineConfig(({ mode }) => {
       sourcemap: true
     },
     define: {
-      'process.env': {
-        ...process.env,
-        ...env
-      }
+      'process.env': env
     },
     server: {
-      port: 9990,
+      port: 7777,
       open: false,
       proxy: {
         '/api': 'http://localhost:3000' // Vercel dev server (functions)
