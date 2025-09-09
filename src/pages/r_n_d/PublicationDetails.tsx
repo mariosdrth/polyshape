@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AppRoutes } from '../../lib/common/AppRoutes';
 import { findPublicationByPid, loadPublications, type Publication } from '../../lib/publications';
+import { LoadingSpinnerFallback } from '../../lib/common/ui/spinner/LoadingSpinnerFallback';
 
 function formatDate(p: Publication) {
   const iso = p.date;
@@ -13,7 +14,7 @@ function formatDate(p: Publication) {
   return `${month} ${year}`;
 }
 
-export default function PublicationDetails() {
+function PublicationDetailsInner() {
   const { pid } = useParams();
   const pub = useMemo(() => (pid ? findPublicationByPid(pid) : undefined), [pid]);
   // Prime loader for fallback when direct-loading a details page
@@ -66,5 +67,13 @@ export default function PublicationDetails() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PublicationDetails() {
+  return (
+    <Suspense fallback={<LoadingSpinnerFallback />}>
+      <PublicationDetailsInner />
+    </Suspense>
   );
 }

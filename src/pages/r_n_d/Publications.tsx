@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+
+import { useMemo, Suspense } from 'react';
 import { AppRoutes } from "../../lib/common/AppRoutes";
 import { loadPublications } from "../../lib/publications";
 import ItemList, { type Item } from "../../lib/common/ui/ItemList";
+import { LoadingSpinnerFallback } from '../../lib/common/ui/spinner/LoadingSpinnerFallback';
 
-export default function Publications() {
+function PublicationsInner() {
   const pubs = useMemo(() => loadPublications(), []);
   return (
     <ItemList
@@ -14,6 +16,14 @@ export default function Publications() {
       paginationAriaLabel="Publications pagination"
       getItemHref={(p) => `${AppRoutes.PUBLICATIONS.path}/${p.pid}`}
     />
+  );
+}
+
+export default function Publications() {
+  return (
+    <Suspense fallback={<LoadingSpinnerFallback />}> 
+      <PublicationsInner />
+    </Suspense>
   );
 }
 

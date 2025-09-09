@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AppRoutes } from '../../lib/common/AppRoutes';
 import { findProjectByPid, loadProjects, type Project } from '../../lib/projects';
+import { LoadingSpinnerFallback } from '../../lib/common/ui/spinner/LoadingSpinnerFallback';
 
 function formatDate(p: Project) {
   const iso = p.date;
@@ -13,10 +14,10 @@ function formatDate(p: Project) {
   return `${month} ${year}`;
 }
 
-export default function ProjectDetails() {
+
+function ProjectDetailsInner() {
   const { pid } = useParams();
   const project = useMemo(() => (pid ? findProjectByPid(pid) : undefined), [pid]);
-  // Ensure projects are primed for fallback even if direct-load
   useMemo(() => loadProjects(), []);
 
   if (!project) {
@@ -41,6 +42,14 @@ export default function ProjectDetails() {
       <p className="list__meta"><time dateTime={project.date}>{formatDate(project)}</time>{partner ? ' — ' : ''}{partner}</p>
       {blocks.map((t, i) => (<p key={i}>{t}</p>))}
     </div>
+  );
+}
+
+export default function ProjectDetails() {
+  return (
+    <Suspense fallback={<LoadingSpinnerFallback />}> 
+      <ProjectDetailsInner />
+    </Suspense>
   );
 }
 

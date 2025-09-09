@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+
+import { useMemo, Suspense } from 'react';
 import { loadProjects } from '../../lib/projects';
 import { AppRoutes } from '../../lib/common/AppRoutes';
 import ItemList, { type Item } from '../../lib/common/ui/ItemList';
+import { LoadingSpinnerFallback } from '../../lib/common/ui/spinner/LoadingSpinnerFallback';
 
-export default function Projects() {
+function ProjectsInner() {
   const projects = useMemo(() => loadProjects(), []);
   return (
     <ItemList
@@ -14,5 +16,13 @@ export default function Projects() {
       paginationAriaLabel="Projects pagination"
       getItemHref={(p) => `${AppRoutes.PROJECTS.path}/${p.pid}`}
     />
+  );
+}
+
+export default function Projects() {
+  return (
+    <Suspense fallback={<LoadingSpinnerFallback />}> 
+      <ProjectsInner />
+    </Suspense>
   );
 }
