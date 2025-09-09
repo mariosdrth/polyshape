@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { upload } from '../../src/lib/storage/upload.js';
 import { randomUUID } from 'crypto';
+import { applyCORS } from '../../src/lib/storage/cors.js';
 
 function slugify(input: string): string {
   return input
@@ -18,6 +19,7 @@ function isValidDate(dateStr: string): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (applyCORS(req, res)) return;
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'Method not allowed' });
     return;
