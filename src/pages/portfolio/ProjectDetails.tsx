@@ -1,7 +1,7 @@
-import { useMemo, Suspense } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AppRoutes } from '../../lib/common/AppRoutes';
-import { findProjectByPid, loadProjects, type Project } from '../../lib/projects';
+import { useProjects, type Project } from '../../lib/projects';
 import { LoadingSpinnerFallback } from '../../lib/common/ui/spinner/LoadingSpinnerFallback';
 
 function formatDate(p: Project) {
@@ -15,11 +15,15 @@ function formatDate(p: Project) {
 }
 
 
-function ProjectDetailsInner() {
+export default function ProjectDetails() {
   const { pid } = useParams();
-  const project = useMemo(() => (pid ? findProjectByPid(pid) : undefined), [pid]);
-  useMemo(() => loadProjects(), []);
+  const { data, loading, error, reload } = useProjects();
+  useEffect(() => { reload(); }, [reload]);
 
+  const project = useMemo(() => (data && pid ? data.find(p => p.pid === pid) : undefined), [data, pid]);
+
+  if (loading || !data) return <LoadingSpinnerFallback />;
+  if (error) return <div className="prose"><p>Failed to load project.</p></div>;
   if (!project) {
     return (
       <div className="prose">
@@ -42,14 +46,6 @@ function ProjectDetailsInner() {
       <p className="list__meta"><time dateTime={project.date}>{formatDate(project)}</time>{partner ? ' — ' : ''}{partner}</p>
       {blocks.map((t, i) => (<p key={i}>{t}</p>))}
     </div>
-  );
-}
-
-export default function ProjectDetails() {
-  return (
-    <Suspense fallback={<LoadingSpinnerFallback />}> 
-      <ProjectDetailsInner />
-    </Suspense>
   );
 }
 

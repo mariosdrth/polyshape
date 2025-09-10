@@ -1,4 +1,5 @@
 import { isDev, getEnvVar } from './env';
+import { useCallback, useEffect, useState } from 'react';
 
 export type PublicationDoc = {
   title: string;
@@ -54,12 +55,8 @@ function sortAndAssignPids(items: Publication[]): void {
   });
 }
 
-// --- Remote (API) loader with Suspense-friendly resource ---
+// --- Remote (API) loader ---
 type BlobEntry = { url?: string; downloadUrl?: string; pathname?: string };
-
-let remoteCache: Publication[] | null = null;
-let remoteError: unknown = null;
-let remotePending: Promise<void> | null = null;
 
 async function fetchRemotePublications(): Promise<Publication[]> {
   const listRes = await fetch('/api/publications/list', { headers: { 'Accept': 'application/json' } });
@@ -99,19 +96,6 @@ function cryptoRandomId(): string {
   }
 }
 
-function loadPublicationsRemoteResource(): Publication[] {
-  if (remoteCache) return remoteCache;
-  if (remoteError) throw remoteError;
-  if (!remotePending) {
-    remotePending = fetchRemotePublications()
-      .then((items) => { remoteCache = items; })
-      .catch((e) => { remoteError = e; })
-      .finally(() => { remotePending = null; });
-  }
-  // Suspend via React Suspense
-  throw remotePending;
-}
-
 function shouldUseApi(): boolean {
   // In production: always use API
   if (!isDev()) return true;
@@ -120,13 +104,32 @@ function shouldUseApi(): boolean {
   return String(flag).toLowerCase() === 'true';
 }
 
-export function loadPublications(): Publication[] {
+export async function fetchPublications(): Promise<Publication[]> {
   if (shouldUseApi()) {
-    return loadPublicationsRemoteResource();
+    return fetchRemotePublications();
   }
-  return loadPublicationsLocal();
+  return Promise.resolve(loadPublicationsLocal());
 }
 
-export function findPublicationByPid(pid: string): Publication | undefined {
-  return loadPublications().find(p => p.pid === pid);
+// React hook to fetch publications without module-level caching
+export function usePublications() {
+  const [data, setData] = useState<Publication[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [seq, setSeq] = useState(0);
+
+  const reload = useCallback(() => setSeq((v) => v + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchPublications()
+      .then((items) => { if (!cancelled) setData(items); })
+      .catch((e) => { if (!cancelled) setError(e); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [seq]);
+
+  return { data, error, loading, reload } as const;
 }

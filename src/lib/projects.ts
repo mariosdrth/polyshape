@@ -1,4 +1,5 @@
 import { isDev, getEnvVar } from './env';
+import { useCallback, useEffect, useState } from 'react';
 
 export type ProjectDoc = {
   title: string;
@@ -55,12 +56,8 @@ function sortAndAssignPids(items: Project[]): void {
   });
 }
 
-// --- Remote (API) loader with Suspense-friendly resource ---
+// --- Remote (API) loader ---
 type BlobEntry = { url?: string; downloadUrl?: string; pathname?: string };
-
-let remoteCache: Project[] | null = null;
-let remoteError: unknown = null;
-let remotePending: Promise<void> | null = null;
 
 async function fetchRemoteProjects(): Promise<Project[]> {
   const listRes = await fetch('/api/projects/list', { headers: { 'Accept': 'application/json' } });
@@ -100,19 +97,6 @@ function cryptoRandomId(): string {
   }
 }
 
-function loadProjectsRemoteResource(): Project[] {
-  if (remoteCache) return remoteCache;
-  if (remoteError) throw remoteError;
-  if (!remotePending) {
-    remotePending = fetchRemoteProjects()
-      .then((items) => { remoteCache = items; })
-      .catch((e) => { remoteError = e; })
-      .finally(() => { remotePending = null; });
-  }
-  // Suspend via React Suspense
-  throw remotePending;
-}
-
 function shouldUseApi(): boolean {
   // In production: always use API
   if (!isDev()) return true;
@@ -121,13 +105,32 @@ function shouldUseApi(): boolean {
   return String(flag).toLowerCase() === 'true';
 }
 
-export function loadProjects(): Project[] {
+export async function fetchProjects(): Promise<Project[]> {
   if (shouldUseApi()) {
-    return loadProjectsRemoteResource();
+    return fetchRemoteProjects();
   }
-  return loadProjectsLocal();
+  return Promise.resolve(loadProjectsLocal());
 }
 
-export function findProjectByPid(pid: string): Project | undefined {
-  return loadProjects().find(p => p.pid === pid);
+// React hook to fetch projects without module-level caching
+export function useProjects() {
+  const [data, setData] = useState<Project[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [seq, setSeq] = useState(0);
+
+  const reload = useCallback(() => setSeq((v) => v + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchProjects()
+      .then((items) => { if (!cancelled) setData(items); })
+      .catch((e) => { if (!cancelled) setError(e); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [seq]);
+
+  return { data, error, loading, reload } as const;
 }
