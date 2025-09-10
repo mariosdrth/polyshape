@@ -33,8 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(400).json({ ok: false, error: 'Invalid or missing title' });
       return;
     }
-    if (!content || typeof content !== 'string') {
-      res.status(400).json({ ok: false, error: 'Invalid or missing content' });
+    if (!Array.isArray(content) || content.some(p => typeof p !== 'string' || !p.trim())) {
+      res.status(400).json({ ok: false, error: 'Invalid content array' });
       return;
     }
     if (!date || typeof date !== 'string' || !isValidDate(date)) {
