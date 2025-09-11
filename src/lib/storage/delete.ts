@@ -7,8 +7,8 @@ export async function remove(prefix: string, filename: string) {
   }
 
   const normalizedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
-  const pathname = `${normalizedPrefix}${filename}`;
+  const safeName = filename.endsWith('.json') ? filename : `${filename}.json`;
+  const pathname = `${normalizedPrefix}${safeName}`;
 
-  const result = await del(pathname, { token });
-  return result;
+  return await del(pathname, { token });
 }

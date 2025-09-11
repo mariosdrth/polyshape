@@ -59,7 +59,7 @@ function sortAndAssignPids(items: Publication[]): void {
 type BlobEntry = { url?: string; downloadUrl?: string; pathname?: string };
 
 async function fetchRemotePublications(): Promise<Publication[]> {
-  const listRes = await fetch('/api/publications/list', { headers: { 'Accept': 'application/json' } });
+  const listRes = await fetch(withCacheBuster('/api/publications'), { headers: { 'Accept': 'application/json' } });
   if (!listRes.ok) {
     throw new Error(`Failed to list publications (${listRes.status})`);
   }
@@ -69,18 +69,24 @@ async function fetchRemotePublications(): Promise<Publication[]> {
   const docs = await Promise.all(entries.map(async (b) => {
     const dl = b.downloadUrl || (b.url ? `${b.url}?download=1` : undefined);
     if (!dl) return undefined;
-    const res = await fetch(dl, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(withCacheBuster(dl), { headers: { 'Accept': 'application/json' } });
     if (!res.ok) {
       return undefined;
     }
     const doc = (await res.json()) as PublicationDoc;
     const base = (b.pathname || '').split('/').pop() || '';
     const id = base.replace(/\.json$/i, '') || cryptoRandomId();
-    return { id, pid: '000000', ...doc } as Publication;
+    return { id, pid: id, ...doc } as Publication;
   }));
 
+  // Sort by date desc; keep pid as filename for remote
   const items = docs.filter(Boolean) as Publication[];
-  sortAndAssignPids(items);
+  const toTime = (s: string): number => {
+    const iso = /^(\d{4})-(\d{2})$/.test(s) ? `${s}-01` : s;
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+  items.sort((a, b) => toTime(b.date) - toTime(a.date));
   return items;
 }
 
@@ -132,4 +138,16 @@ export function usePublications() {
   }, [seq]);
 
   return { data, error, loading, reload } as const;
+}
+
+// Add a cache-busting param to avoid stale reads after updates
+function withCacheBuster(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    u.searchParams.set('_', Date.now().toString());
+    return u.toString();
+  } catch {
+    const sep = urlStr.includes('?') ? '&' : '?';
+    return `${urlStr}${sep}_=${Date.now()}`;
+  }
 }
