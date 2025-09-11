@@ -5,6 +5,7 @@ import Layout from "./lib/common/ui/Layout";
 import { ThemeProvider } from "./lib/common/ui/theme/ThemeProvider";
 import { TooltipProvider } from "./lib/common/ui/tooltip/TooltipProvider";
 import ToastHost from "./lib/common/ui/ToastHost";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 type RoutesMap = typeof AppRoutes;
 type Key = keyof RoutesMap;
@@ -34,7 +35,8 @@ export default function App() {
         </Routes>
         </Suspense>
       </BrowserRouter>
-        <ToastHost/>
+      <ToastHost/>
+      <SpeedInsights/>
       </TooltipProvider>
     </ThemeProvider>
   );
