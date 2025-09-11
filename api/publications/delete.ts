@@ -16,8 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const pathname = `publications/${filename}`;
-    const result = await remove(pathname);
+    const result = await remove('publications', filename);
 
     res.status(200).json({ ok: true, deleted: result });
   } catch (e: unknown) {

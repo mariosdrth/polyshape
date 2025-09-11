@@ -1,13 +1,13 @@
 import { del } from '@vercel/blob';
 
-export async function remove(pathname: string) {
+export async function remove(prefix: string, filename: string) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) {
     throw new Error('Missing BLOB_READ_WRITE_TOKEN');
   }
-  if (!pathname || typeof pathname !== 'string') {
-    throw new Error('Invalid pathname');
-  }
+
+  const normalizedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
+  const pathname = `${normalizedPrefix}${filename}`;
 
   const result = await del(pathname, { token });
   return result;
